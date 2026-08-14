@@ -3,14 +3,17 @@
 Code accompanying **"Differential Censoring Is Not Informative Censoring: A
 Simulation Study of Censoring Bias in Survival Analyses."**
 
-Two scripts are included:
+Three scripts are included:
 
 | File | Role |
 |---|---|
-| [`simulation_ipcw_github.R`](simulation_ipcw_github.R) | Defines everything: the 4 data-generating scenarios, the naive and IPCW estimators, the counterfactual truth, and the bootstrap. Sourced by the other script — not meant to be run on its own. |
-| [`monte_carlo_run_github.R`](monte_carlo_run_github.R) | The entry point. Sources the file above, runs `R` Monte Carlo replicates across all 4 scenarios in parallel, and writes out bias / coverage / MSE summary tables. |
+| [`simulation_ipcw_github.R`](simulation_ipcw_github.R) | Defines everything: the 4 data-generating scenarios, the naive and IPCW estimators, the counterfactual truth, and the bootstrap. Sourced by the other two scripts — not meant to be run on its own. |
+| [`monte_carlo_run_github.R`](monte_carlo_run_github.R) | The main entry point. Sources the file above, runs `R` Monte Carlo replicates across all 4 scenarios in parallel, and writes out bias / coverage / MSE summary tables. |
+| [`R_function_censor_drivers_github.R`](R_function_censor_drivers_github.R) | A standalone diagnostic: fits Cox models for the event and for non-administrative censoring on the same covariates, to check which covariates are shared causes (i.e. make censoring informative) and whether any effect differs by arm (differential censoring). See §9. |
 
-You only need to run `monte_carlo_run_github.R`.
+For the Monte Carlo simulation, you only need to run `monte_carlo_run_github.R`.
+`R_function_censor_drivers_github.R` is an independent utility you can run on
+its own, or apply to your own dataset.
 
 ---
 
@@ -147,3 +150,57 @@ each replicate (`bootstrap_ipcw_rd_rmstd()`, in `simulation_ipcw_github.R`)
 *also* parallelizes internally via `mclapply` when it detects it's on Unix.
 Running both at once can oversubscribe your cores (not incorrect, just
 slower than expected) — if that happens, lower `n_cores`.
+
+## 9. Diagnostic: which covariates drive censoring vs. the event?
+
+`R_function_censor_drivers_github.R` defines one function,
+`analyze_censor_outcome_drivers()`, that answers the question this whole
+simulation study is about, but for a *specific* dataset: **is censoring here
+informative, and is it differential?**
+
+It fits two Cox models on the same covariates —
+
+```
+Event model :  Surv(time, outcome_flag) ~ exposure + confounders
+Censor model:  Surv(time, censor_flag)  ~ exposure + confounders
+```
+
+— and reports the HR (95% CI) for every covariate in both models. A
+covariate whose CI excludes 1 in **both** models is flagged as an
+`informative_censoring_driver` (a shared cause of the event and of
+non-administrative censoring — the mechanism that biases naive KM/Cox
+estimates). Setting `interaction = TRUE` adds `exposure:confounder` terms so
+you can also test whether a covariate's effect is **differential** (CI
+excludes 1 in the interaction term = the effect differs by arm).
+
+```r
+source("R_function_censor_drivers_github.R")  # also sources simulation_ipcw_github.R
+
+analyze_censor_outcome_drivers(
+  input_table           = dat_s3,          # one row per subject
+  exposure              = "A",             # treatment/exposure column
+  outcome_flag          = "event1",        # 1 = event
+  censor_flag           = "censor_event",  # 1 = non-administrative (LTFU) censoring
+  time_to_event         = "time",
+  censoring_confounders = c("L_c1", "L_c2", "L"),
+  interaction           = TRUE,
+  output_folder         = "results"
+)
+```
+
+Running the script as-is (`Rscript R_function_censor_drivers_github.R`)
+simulates one draw of each of the 4 scenarios (same `n` and `max_fu` as the
+manuscript) and runs the diagnostic on all of them — a quick way to see how
+the flags recover each scenario's known design (e.g. no drivers in S1;
+`L_c1`/`L_c2` flagged as informative in S3; `A` itself flagged as an
+informative *and* differential driver in S4). To use it on your own data,
+skip the `EXAMPLE USE` block at the bottom and call
+`analyze_censor_outcome_drivers()` directly with your own `input_table`.
+
+**Output** (written to `output_folder`, filenames suffixed with the variable
+name you passed as `input_table`):
+
+| File | Contents |
+|---|---|
+| `censor_outcome_drivers_<name>.csv` | HR, 95% CI, and significance flag for every term (main effects + interactions, if requested) in both the event and censoring models. |
+| `censor_outcome_driver_flags_<name>.csv` | One row per main-effect covariate: whether it's significant in the event model, the censoring model, and both (`informative_censoring_driver`). |
