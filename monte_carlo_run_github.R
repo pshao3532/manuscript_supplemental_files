@@ -8,8 +8,9 @@
 #   (S1-S4), and summarizes bias / coverage / MSE for the naive vs. IPCW
 #   estimators against the counterfactual truth.
 #
-#   Run this script with the repository root as the working directory, so
-#   that "R/simulation_ipcw_github.R" and "results/" resolve correctly.
+#   Run this script with the repository root (where both .R files live) as
+#   the working directory, so that "simulation_ipcw_github.R" and
+#   "results/" resolve correctly.
 # ============================================================================
 
 library(tidyverse)
@@ -22,7 +23,7 @@ library(parallel)
 output_dir <- "results"
 dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
 
-source("R/simulation_ipcw_github.R")
+source("simulation_ipcw_github.R")
 
 # ============================================================================
 # USER-CONTROLLED SETTINGS
@@ -85,7 +86,7 @@ if (n_cores > 1L) {
   parallel::clusterSetRNGStream(cl, base_seed)
   parallel::clusterExport(cl, c("n_s1", "n_s2", "n_s3", "n_s4", "tmax", "max_fu",
                                 "n_boot", "base_seed", "run_one_replicate"))
-  parallel::clusterEvalQ(cl, source("R/simulation_ipcw_github.R"))
+  parallel::clusterEvalQ(cl, source("simulation_ipcw_github.R"))
   mc_results_list <- tryCatch(
     parallel::parLapply(cl, seq_len(R), run_replicate_safe),
     finally = parallel::stopCluster(cl)
