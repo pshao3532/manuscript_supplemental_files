@@ -156,7 +156,7 @@ slower than expected) — if that happens, lower `n_cores`.
 `R_function_censor_drivers_github.R` defines one function,
 `analyze_censor_outcome_drivers()`, that answers the question this whole
 simulation study is about, but for a *specific* dataset: **is censoring here
-informative, and is it differential?**
+informative?**
 
 It fits two Cox models on the same covariates —
 
@@ -168,9 +168,9 @@ Censor model:  Surv(time, censor_flag)  ~ exposure + confounders
 — and reports the HR (95% CI) for every covariate in both models. A
 covariate whose CI excludes 1 in **both** models is flagged as an
 `informative_censoring_driver` (a shared cause of the event and of
-non-administrative censoring — the mechanism that biases naive KM/Cox
-estimates). Setting `interaction = TRUE` adds `exposure:confounder` terms so
-you can also test whether a covariate's effect is **differential** (CI
+non-administrative censoring). Setting `interaction = TRUE` adds 
+`exposure:confounder` terms so you can also test whether a covariate's
+effect is **informative** (CI
 excludes 1 in the interaction term = the effect differs by arm).
 
 ```r
