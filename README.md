@@ -1,7 +1,6 @@
 # Censoring Bias Simulation — Code Companion
 
-Code accompanying **"Differential Censoring Is Not Informative Censoring: A
-Simulation Study of Censoring Bias in Survival Analyses."**
+Code accompanying **"Differential censoring does not imply informative censoring: a Monte Carlo simulation study of bias in survival analyses."**
 
 Three scripts are included:
 
